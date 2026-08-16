@@ -1,0 +1,1 @@
+{% extends 'base.html' %}{% block content %}<h1>Auditoria</h1><div class="card"><table><tr><th>Data</th><th>Ação</th><th>Detalhes</th><th>IP</th></tr>{% for x in items %}<tr><td>{{x.created_at.strftime('%d/%m/%Y %H:%M:%S')}}</td><td>{{x.action}}</td><td>{{x.details}}</td><td>{{x.ip}}</td></tr>{% endfor %}</table></div>{% endblock %}

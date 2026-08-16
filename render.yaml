@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: ponto-online-pro
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn run_local:app
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: ponto-online-db
+          property: connectionString
+      - key: SECRET_KEY
+        generateValue: true
+databases:
+  - name: ponto-online-db

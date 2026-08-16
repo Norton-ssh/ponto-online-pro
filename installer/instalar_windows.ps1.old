@@ -1,0 +1,156 @@
+$ErrorActionPreference = 'Stop'
+$Root = 'C:\Ponto_Online_Pro'
+$Source = Split-Path -Parent $PSScriptRoot
+$LogDir = Join-Path $Root 'logs'
+New-Item -ItemType Directory -Force -Path $Root, $LogDir | Out-Null
+
+function Write-InstallLog($msg) {
+    Add-Content -Path (Join-Path $LogDir 'install.log') -Value ("[{0}] {1}" -f (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'), $msg)
+}
+
+Write-InstallLog 'Iniciando instalação V1.4'
+Write-Host 'Instalando Ponto Online Pro...' -ForegroundColor Cyan
+
+# Copia os arquivos do projeto para a pasta definitiva.
+Copy-Item "$Source\*" $Root -Recurse -Force -Exclude 'venv','instance','logs'
+
+function Find-Python {
+    $candidates = @(
+        "$env:LOCALAPPDATA\Programs\Python\Python313\python.exe",
+        "$env:LOCALAPPDATA\Programs\Python\Python312\python.exe",
+        "$env:LOCALAPPDATA\Programs\Python\Python311\python.exe",
+        "$env:ProgramFiles\Python313\python.exe",
+        "$env:ProgramFiles\Python312\python.exe",
+        "$env:ProgramFiles\Python311\python.exe",
+        "$env:ProgramFiles\Python313\python.exe"
+    )
+    foreach ($p in $candidates) {
+        if (Test-Path $p) {
+            try {
+                $v = & $p --version 2>&1
+                if ($v -match 'Python 3\.(11|12|13)') { return $p }
+            } catch {}
+        }
+    }
+    foreach ($c in @('python.exe','py.exe')) {
+        try {
+            $cmd = Get-Command $c -ErrorAction Stop
+            $v = & $cmd.Source --version 2>&1
+            if ($v -match 'Python 3\.(11|12|13)') {
+                if ($c -eq 'py.exe') {
+                    try {
+                        $path = & $cmd.Source -3.12 -c "import sys; print(sys.executable)" 2>$null
+                        if ($path -and (Test-Path $path.Trim())) { return $path.Trim() }
+                    } catch {}
+                } else { return $cmd.Source }
+            }
+        } catch {}
+    }
+    return $null
+}
+
+$Python = Find-Python
+if (-not $Python) {
+    Write-Host 'Python 3.12 não encontrado. Baixando instalador oficial...' -ForegroundColor Yellow
+    Write-InstallLog 'Python não encontrado; baixando Python 3.12.10'
+    $url = 'https://www.python.org/ftp/python/3.12.10/python-3.12.10-amd64.exe'
+    $tmp = Join-Path $env:TEMP 'python-3.12.10-amd64.exe'
+    Invoke-WebRequest -Uri $url -OutFile $tmp -UseBasicParsing
+    Start-Process -FilePath $tmp -ArgumentList '/quiet InstallAllUsers=1 PrependPath=1 Include_pip=1 Include_test=0' -Wait
+    Start-Sleep -Seconds 2
+    $Python = Find-Python
+}
+
+if (-not $Python) {
+    throw 'Não foi possível localizar o Python 3.11, 3.12 ou 3.13 após a instalação. Verifique C:\Ponto_Online_Pro\logs\install.log.'
+}
+Write-InstallLog "Python encontrado: $Python"
+Write-Host "Python: $Python" -ForegroundColor Green
+
+# Todas as etapas do aplicativo são executadas a partir da pasta raiz do sistema.
+# Isso evita o erro comum de executar 'from app import ...' estando dentro de C:\Ponto_Online_Pro\installer.
+Set-Location $Root
+$env:PYTHONPATH = $Root
+Write-InstallLog "Diretorio de trabalho: $(Get-Location)"
+Write-InstallLog "PYTHONPATH: $env:PYTHONPATH"
+
+# Cria/recria ambiente virtual de forma explícita. Não depende do launcher 'py'.
+$VenvPython = Join-Path $Root 'venv\Scripts\python.exe'
+if (-not (Test-Path $VenvPython)) {
+    Write-Host 'Criando ambiente virtual...' -ForegroundColor Cyan
+    & $Python -m venv (Join-Path $Root 'venv')
+    if ($LASTEXITCODE -ne 0 -or -not (Test-Path $VenvPython)) { throw 'Falha ao criar o ambiente virtual.' }
+}
+
+Write-Host 'Instalando dependências...' -ForegroundColor Cyan
+& $VenvPython -m pip install --upgrade pip --disable-pip-version-check
+if ($LASTEXITCODE -ne 0) { throw 'Falha ao atualizar o pip.' }
+& $VenvPython -m pip install -r (Join-Path $Root 'requirements.txt') --disable-pip-version-check
+if ($LASTEXITCODE -ne 0) { throw 'Falha ao instalar as dependências.' }
+
+# Teste real de importação/criação do banco.
+$TestLog = Join-Path $LogDir 'install_test.log'
+Write-InstallLog 'Testando importacao da aplicacao e criacao do banco...'
+try {
+    $testOutput = & $VenvPython -c "import os,sys; os.chdir(r'$Root'); sys.path.insert(0,r'$Root'); from app import create_app; a=create_app(); print('OK - banco e aplicação criados')" 2>&1 | Out-String
+    $testExit = $LASTEXITCODE
+    $testOutput | Out-File $TestLog -Encoding utf8
+    Write-InstallLog $testOutput.Trim()
+    if ($testExit -ne 0 -or $testOutput -notmatch 'OK - banco e aplicação criados') {
+        throw "O teste da aplicação falhou. Consulte $TestLog"
+    }
+} catch {
+    Write-InstallLog ("FALHA NO TESTE: " + $_.Exception.Message)
+    throw
+}
+Write-Host 'Teste da aplicação e banco: OK' -ForegroundColor Green
+
+# Firewall somente no perfil privado.
+try {
+    if (-not (Get-NetFirewallRule -DisplayName 'Ponto Online Pro - TCP 5000' -ErrorAction SilentlyContinue)) {
+        New-NetFirewallRule -DisplayName 'Ponto Online Pro - TCP 5000' -Direction Inbound -Protocol TCP -LocalPort 5000 -Action Allow -Profile Private | Out-Null
+    }
+} catch { Write-InstallLog "Aviso Firewall: $($_.Exception.Message)" }
+
+# Atalhos: usam wscript + VBS, sem janela preta.
+$Desktop = [Environment]::GetFolderPath('Desktop')
+$Startup = Join-Path $env:APPDATA 'Microsoft\Windows\Start Menu\Programs\Startup'
+$WScript = Join-Path $env:WINDIR 'System32\wscript.exe'
+$Vbs = Join-Path $Root 'desktop\start_hidden.vbs'
+$Icon = Join-Path $Root 'desktop\ponto.ico'
+$Shell = New-Object -ComObject WScript.Shell
+foreach ($Folder in @($Desktop, $Startup)) {
+    New-Item -ItemType Directory -Force -Path $Folder | Out-Null
+    $Shortcut = $Shell.CreateShortcut((Join-Path $Folder 'Ponto Online Pro.lnk'))
+    $Shortcut.TargetPath = $WScript
+    $Shortcut.Arguments = '"' + $Vbs + '"'
+    $Shortcut.WorkingDirectory = $Root
+    if (Test-Path $Icon) { $Shortcut.IconLocation = $Icon }
+    $Shortcut.Save()
+}
+
+# Inicia em segundo plano e valida a porta com várias tentativas.
+Start-Process -FilePath $WScript -ArgumentList ('"' + $Vbs + '"') -WorkingDirectory $Root
+$serverOk = $false
+for ($i = 1; $i -le 10; $i++) {
+    Start-Sleep -Seconds 1
+    try {
+        $resp = Invoke-WebRequest 'http://127.0.0.1:5000/login' -UseBasicParsing -TimeoutSec 3
+        if ($resp.StatusCode -ge 200 -and $resp.StatusCode -lt 500) { $serverOk = $true; break }
+    } catch { }
+}
+if (-not $serverOk) {
+    Write-InstallLog 'SERVIDOR NÃO RESPONDEU APÓS 10 TENTATIVAS.'
+    Write-Host 'ERRO: o servidor não respondeu.' -ForegroundColor Red
+    Write-Host 'Veja:' -ForegroundColor Yellow
+    Write-Host '  C:\Ponto_Online_Pro\logs\server.log'
+    Write-Host '  C:\Ponto_Online_Pro\logs\launcher.log'
+    throw 'O servidor local não iniciou corretamente. A instalação não será marcada como concluída.'
+}
+Write-Host 'SERVIDOR LOCAL: OK' -ForegroundColor Green
+
+Write-InstallLog 'Instalação concluída'
+Write-Host ''
+Write-Host 'Instalação concluída em C:\Ponto_Online_Pro' -ForegroundColor Green
+Write-Host 'Atalho criado na Área de Trabalho.' -ForegroundColor Green
+Write-Host 'O servidor local roda em segundo plano.' -ForegroundColor Green
