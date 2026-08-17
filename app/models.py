@@ -29,7 +29,7 @@ class User(db.Model):
 
 class Punch(db.Model):
     id=db.Column(db.Integer,primary_key=True); company_id=db.Column(db.Integer,db.ForeignKey('company.id'),nullable=False); employee_id=db.Column(db.Integer,db.ForeignKey('user.id'),nullable=False)
-    timestamp=db.Column(db.DateTime,default=local_now,nullable=False); kind=db.Column(db.String(40),nullable=False); photo_path=db.Column(db.String(255))
+    timestamp=db.Column(db.DateTime,default=local_now,nullable=False); kind=db.Column(db.String(40),nullable=False); photo_path=db.Column(db.String(255)); photo_data=db.Column(db.LargeBinary)
     latitude=db.Column(db.Float); longitude=db.Column(db.Float); distance_m=db.Column(db.Float); ip=db.Column(db.String(80)); user_agent=db.Column(db.String(255))
     edited=db.Column(db.Boolean,default=False); correction_note=db.Column(db.String(500)); employee=db.relationship('User'); company=db.relationship('Company')
 

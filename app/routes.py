@@ -140,7 +140,19 @@ def punches_csv():
 @bp.route('/photo/<int:id>')
 @login_required('admin')
 def photo(id):
- p=Punch.query.filter_by(id=id,company_id=current_user().company.id).first_or_404(); return send_from_directory(current_app.config['UPLOAD_FOLDER'],os.path.basename(p.photo_path)) if p.photo_path else ('',404)
+ p=Punch.query.filter_by(id=id,company_id=current_user().company.id).first_or_404()
+ # As fotos novas ficam gravadas no banco para não desaparecerem após um novo deploy do Render.
+ if getattr(p,'photo_data',None):
+  from io import BytesIO
+  import mimetypes
+  mime=mimetypes.guess_type(p.photo_path or '')[0] or 'image/jpeg'
+  return send_file(BytesIO(p.photo_data),mimetype=mime,download_name=os.path.basename(p.photo_path or f'ponto_{p.id}.jpg'))
+ # Compatibilidade com fotos antigas que ainda estejam no diretório local.
+ if p.photo_path:
+  path=os.path.join(current_app.config['UPLOAD_FOLDER'],os.path.basename(p.photo_path))
+  if os.path.isfile(path):
+   return send_file(path)
+ return make_response('Foto não disponível. Esta foto foi criada antes da gravação das imagens no banco e o arquivo local não está mais disponível após o deploy.',404)
 
 @bp.route('/admin/corrections')
 @login_required('admin')
@@ -291,7 +303,12 @@ def generate_proof(id,admin=False):
  except Exception:
   font=ImageFont.load_default(); bold=font; small=font
  photo=None
- if p.photo_path:
+ if getattr(p,'photo_data',None):
+  try:
+   from io import BytesIO
+   photo=Image.open(BytesIO(p.photo_data)).convert('RGB')
+  except Exception: photo=None
+ if photo is None and p.photo_path:
   path=os.path.join(current_app.config['UPLOAD_FOLDER'],os.path.basename(p.photo_path))
   if os.path.exists(path):
    try: photo=Image.open(path).convert('RGB')
@@ -331,9 +348,10 @@ def punch_api():
   m=re.match(r'data:image/(png|jpeg|jpg);base64,(.*)',photo)
   if m:
    ext='jpg' if m.group(1) in ('jpeg','jpg') else 'png'; name=f'punch_{u.id}_{local_now().strftime("%Y%m%d_%H%M%S_%f")}.{ext}'
-   with open(os.path.join(current_app.config['UPLOAD_FOLDER'],name),'wb') as f: f.write(base64.b64decode(m.group(2)))
+   raw_photo=base64.b64decode(m.group(2))
+   with open(os.path.join(current_app.config['UPLOAD_FOLDER'],name),'wb') as f: f.write(raw_photo)
    path=name
  if not path: return jsonify(ok=False,message='A foto da batida é obrigatória.'),400
  last=Punch.query.filter_by(employee_id=u.id).order_by(Punch.timestamp.desc()).first(); kinds=['ENTRADA','INTERVALO - SAÍDA','INTERVALO - RETORNO','SAÍDA']; kind=kinds[0] if not last or last.kind=='SAÍDA' else kinds[kinds.index(last.kind)+1]
- p=Punch(company_id=c.id,employee_id=u.id,kind=kind,photo_path=path,latitude=lat,longitude=lng,distance_m=distance,ip=request.headers.get('X-Forwarded-For',request.remote_addr),user_agent=request.user_agent.string[:255]); db.session.add(p); db.session.commit(); audit('BATEU_PONTO',f'{p.id}:{p.kind}')
+ p=Punch(company_id=c.id,employee_id=u.id,kind=kind,photo_path=path,photo_data=raw_photo,latitude=lat,longitude=lng,distance_m=distance,ip=request.headers.get('X-Forwarded-For',request.remote_addr),user_agent=request.user_agent.string[:255]); db.session.add(p); db.session.commit(); audit('BATEU_PONTO',f'{p.id}:{p.kind}')
  return jsonify(ok=True,punch={'id':p.id,'name':u.name,'cpf':u.cpf,'matricula':u.matricula,'cargo':u.cargo,'date':p.timestamp.strftime('%d/%m/%Y'),'time':p.timestamp.strftime('%H:%M:%S'),'kind':p.kind,'distance':f'{distance:.0f} m','latitude':lat,'longitude':lng,'accuracy':accuracy})
