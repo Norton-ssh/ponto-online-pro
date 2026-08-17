@@ -62,7 +62,7 @@ def inject():
         fp=os.path.join(current_app.instance_path,'certs','server_ip.txt')
         if os.path.exists(fp): ip=open(fp,encoding='utf-8').read().strip() or ip
     except Exception: pass
-    return {'me':current_user(),'fmt_minutes':fmt_minutes,'lan_ip':ip,'employee_login_url':request.host_url.rstrip('/')+'/login'}
+    return {'me':current_user(),'fmt_minutes':fmt_minutes,'work_minutes':work_minutes,'lan_ip':ip,'employee_login_url':request.host_url.rstrip('/')+'/login'}
 
 @bp.route('/')
 def home():
