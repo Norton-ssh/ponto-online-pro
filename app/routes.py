@@ -62,7 +62,7 @@ def inject():
         fp=os.path.join(current_app.instance_path,'certs','server_ip.txt')
         if os.path.exists(fp): ip=open(fp,encoding='utf-8').read().strip() or ip
     except Exception: pass
-    return {'me':current_user(),'fmt_minutes':fmt_minutes,'lan_ip':ip,'employee_login_url':request.host_url.rstrip('/')+'/login'}
+    return {'me':current_user(),'fmt_minutes':fmt_minutes,'work_minutes':work_minutes,'lan_ip':ip,'employee_login_url':request.host_url.rstrip('/')+'/login'}
 
 @bp.route('/')
 def home():
@@ -172,31 +172,107 @@ def audit_page(): return render_template('audit.html',items=AuditLog.query.filte
 @bp.route('/admin/report')
 @login_required('admin')
 def report():
- c=current_user().company
- start=request.args.get('start') or local_today().replace(day=1).isoformat()
- end=request.args.get('end') or local_today().isoformat()
- employee_id=request.args.get('employee','')
- a=datetime.strptime(start,'%Y-%m-%d'); b=datetime.strptime(end,'%Y-%m-%d')+timedelta(days=1)
- employees=User.query.filter_by(company_id=c.id,role='employee').order_by(User.name).all()
- selected=User.query.filter_by(id=int(employee_id),company_id=c.id,role='employee').first() if employee_id else None
- users=[selected] if selected else employees
- rows=[]
- for u in users:
-  ps=Punch.query.filter(Punch.employee_id==u.id,Punch.timestamp>=a,Punch.timestamp<b).order_by(Punch.timestamp).all()
-  grouped=punches_by_day(ps)
-  days=[]
-  cur=a.date()
-  end_date=(b-timedelta(days=1)).date()
-  while cur<=end_date:
-   days.append((cur,grouped.get(cur,[])))
-   cur += timedelta(days=1)
-  useful_days=sum(1 for d,_ in days if d.weekday()<5)
-  absent_days=sum(1 for d,day_ps in days if d.weekday()<5 and not day_ps)
-  normal_daily=int(round((c.weekly_hours or 44)*60/5))
-  rows.append({'employee':u,'days':grouped,'print_days':days,'total':work_minutes(ps),'count':len(ps),
-               'useful_days':useful_days,'absent_days':absent_days,'attestations':0,
-               'normal_total':normal_daily*useful_days})
- return render_template('report.html',rows=rows,start=start,end=end,employees=employees,selected_employee=employee_id,company=c)
+    """Centraliza os relatórios administrativos sem alterar os registros de ponto."""
+    c = current_user().company
+
+    start = request.args.get('start') or local_today().replace(day=1).isoformat()
+    end = request.args.get('end') or local_today().isoformat()
+    employee_id = (request.args.get('employee') or '').strip()
+    view = (request.args.get('view') or 'espelho').strip().lower()
+
+    # Nunca deixa um filtro inválido derrubar a página de relatórios.
+    try:
+        a = datetime.strptime(start, '%Y-%m-%d')
+        b = datetime.strptime(end, '%Y-%m-%d') + timedelta(days=1)
+        if b <= a:
+            raise ValueError('período inválido')
+    except (TypeError, ValueError):
+        start = local_today().replace(day=1).isoformat()
+        end = local_today().isoformat()
+        a = datetime.strptime(start, '%Y-%m-%d')
+        b = datetime.strptime(end, '%Y-%m-%d') + timedelta(days=1)
+
+    employees = User.query.filter_by(company_id=c.id, role='employee').order_by(User.name).all()
+    selected = None
+    if employee_id.isdigit():
+        selected = User.query.filter_by(
+            id=int(employee_id), company_id=c.id, role='employee'
+        ).first()
+    users = [selected] if selected else employees
+
+    # Dias úteis: segunda a sexta, descontando feriados cadastrados.
+    holidays = {h.day for h in Holiday.query.filter_by(company_id=c.id).all()}
+    workdays = []
+    cur = a.date()
+    last_day = (b - timedelta(days=1)).date()
+    while cur <= last_day:
+        if cur.weekday() < 5 and cur not in holidays:
+            workdays.append(cur)
+        cur += timedelta(days=1)
+
+    # Calcula a jornada normal de forma segura.
+    try:
+        ws = datetime.strptime(c.work_start or '08:00', '%H:%M')
+        we = datetime.strptime(c.work_end or '17:30', '%H:%M')
+        bs = datetime.strptime(c.break_start or '12:00', '%H:%M')
+        be = datetime.strptime(c.break_end or '13:00', '%H:%M')
+        daily_target = max(0, int((we - ws).total_seconds() / 60) - int((be - bs).total_seconds() / 60))
+    except (TypeError, ValueError, AttributeError):
+        try:
+            daily_target = max(0, int(float(c.weekly_hours or 44) * 60 / 5))
+        except (TypeError, ValueError):
+            daily_target = 528
+
+    # Calendário completo do período, inclusive sábados e domingos.
+    calendar_days = []
+    cur = a.date()
+    while cur <= last_day:
+        calendar_days.append(cur)
+        cur += timedelta(days=1)
+
+    rows = []
+    for u in users:
+        ps = Punch.query.filter(
+            Punch.employee_id == u.id,
+            Punch.company_id == c.id,
+            Punch.timestamp >= a,
+            Punch.timestamp < b
+        ).order_by(Punch.timestamp).all()
+
+        days = punches_by_day(ps)
+        marked_days = set(days.keys())
+        absence_days = [d for d in workdays if d not in marked_days]
+        total = work_minutes(ps)
+        expected = daily_target * len(workdays)
+
+        rows.append({
+            'employee': u,
+            'days': days,
+            'calendar_days': calendar_days,
+            'workdays': workdays,
+            'absence_days': absence_days,
+            'absence_count': len(absence_days),
+            'absence_pct': (len(absence_days) / len(workdays) * 100) if workdays else 0,
+            'total': total,
+            'count': len(ps),
+            'daily_target': daily_target,
+            'expected': expected,
+            'overtime': max(0, total - expected),
+            'attestations': 0,
+            'normal_total': expected,
+        })
+
+    return render_template(
+        'report.html',
+        rows=rows,
+        start=start,
+        end=end,
+        employees=employees,
+        selected_employee=employee_id,
+        company=c,
+        view=view,
+        now_print=local_now()
+    )
 
 @bp.route('/admin/report.csv')
 @login_required('admin')
@@ -205,14 +281,51 @@ def report_csv():
  a=datetime.strptime(start,'%Y-%m-%d'); b=datetime.strptime(end,'%Y-%m-%d')+timedelta(days=1)
  q=Punch.query.filter(Punch.company_id==c.id,Punch.timestamp>=a,Punch.timestamp<b)
  if employee_id: q=q.filter(Punch.employee_id==int(employee_id))
- out=io.StringIO(); w=csv.writer(out,delimiter=';'); w.writerow(['Funcionário','Matrícula','CPF','Data','Hora','Tipo','Distância','Editado'])
- for p in q.order_by(Punch.employee_id,Punch.timestamp).all(): w.writerow([p.employee.name,p.employee.matricula,p.employee.cpf,p.timestamp.strftime('%d/%m/%Y'),p.timestamp.strftime('%H:%M:%S'),p.kind,f'{p.distance_m:.0f} m' if p.distance_m else '', 'SIM' if p.edited else 'NÃO'])
+ out=io.StringIO(); w=csv.writer(out,delimiter=';'); w.writerow(['Funcionário','Matrícula','CPF','Cargo','Departamento','Data','Hora','Tipo','Descrição','Distância','Editado'])
+ for p in q.order_by(Punch.employee_id,Punch.timestamp).all():
+  w.writerow([p.employee.name,p.employee.matricula,p.employee.cpf,p.employee.cargo,p.employee.department,p.timestamp.strftime('%d/%m/%Y'),p.timestamp.strftime('%H:%M:%S'),p.kind,'Registro corrigido: '+(p.correction_note or '') if p.edited else 'Registro original',f'{p.distance_m:.0f} m' if p.distance_m else '', 'SIM' if p.edited else 'NÃO'])
  r=make_response('\ufeff'+out.getvalue()); r.headers['Content-Disposition']='attachment; filename=folha_ponto.csv'; r.headers['Content-Type']='text/csv; charset=utf-8'; return r
 
 @bp.route('/admin/report/print')
 @login_required('admin')
 def report_print():
  args=request.args.to_dict(); args['print']='1'; return redirect(url_for('main.report',**args))
+
+@bp.route('/admin/report/proof')
+@login_required('admin')
+def report_period_proof():
+ """Gera um comprovante PNG do espelho completo do período selecionado."""
+ c=current_user().company
+ start=request.args.get('start') or local_today().replace(day=1).isoformat(); end=request.args.get('end') or local_today().isoformat(); employee_id=request.args.get('employee','')
+ if not employee_id or not employee_id.isdigit(): return ('Selecione um funcionário para gerar o comprovante do período.',400)
+ u=User.query.filter_by(id=int(employee_id),company_id=c.id,role='employee').first_or_404()
+ a=datetime.strptime(start,'%Y-%m-%d'); b=datetime.strptime(end,'%Y-%m-%d')+timedelta(days=1)
+ ps=Punch.query.filter(Punch.employee_id==u.id,Punch.company_id==c.id,Punch.timestamp>=a,Punch.timestamp<b).order_by(Punch.timestamp).all()
+ days=punches_by_day(ps)
+ from PIL import Image,ImageDraw,ImageFont
+ try:
+  fp='/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf'; bp='/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf'
+  font=ImageFont.truetype(fp,24); bold=ImageFont.truetype(bp,27); small=ImageFont.truetype(fp,19)
+ except Exception: font=bold=small=ImageFont.load_default()
+ width=1500; row_h=48; header_h=260; height=max(700,header_h+row_h*(len(days)+6)); img=Image.new('RGB',(width,height),'white'); d=ImageDraw.Draw(img)
+ d.rectangle((0,0,width,120),fill=(16,24,39)); d.text((35,25),c.name[:80],font=bold,fill='white'); d.text((35,72),'ESPELHO DE MARCAÇÕES / COMPROVANTE DE PONTO',font=font,fill='white')
+ y=145
+ info=[f'Período: {a.strftime("%d/%m/%Y")} a {(b-timedelta(days=1)).strftime("%d/%m/%Y")}',f'Funcionário: {u.name}',f'Matrícula: {u.matricula or "-"}    CPF: {u.cpf or "-"}',f'Cargo: {u.cargo or "-"}    Departamento: {u.department or "-"}']
+ for line in info: d.text((35,y),line,font=font,fill=(30,30,30)); y+=34
+ y+=10; d.line((25,y,width-25,y),fill=(50,50,50),width=2); y+=18
+ d.text((35,y),'DATA',font=bold,fill=(20,20,20)); d.text((230,y),'MARCAÇÕES',font=bold,fill=(20,20,20)); d.text((1050,y),'TOTAL',font=bold,fill=(20,20,20)); d.text((1210,y),'DESCRIÇÃO',font=bold,fill=(20,20,20)); y+=42
+ for day, items in sorted(days.items()):
+  if (y//row_h)%2: d.rectangle((25,y-7,width-25,y+35),fill=(238,238,238))
+  d.text((35,y),day.strftime('%d/%m/%Y'),font=font,fill=(25,25,25))
+  marks='   '.join([p.timestamp.strftime('%H:%M')+' '+p.kind for p in items])
+  d.text((230,y),marks[:55],font=font,fill=(25,25,25)); d.text((1050,y),fmt_minutes(work_minutes(items)),font=font,fill=(25,25,25));
+  desc='; '.join([('Corrigido: '+(p.correction_note or '')) if p.edited else 'Original' for p in items])
+  d.text((1210,y),desc[:32],font=small,fill=(25,25,25)); y+=row_h
+ d.line((25,y,width-25,y),fill=(50,50,50),width=2); y+=20
+ d.text((35,y),f'TOTAL DE HORAS TRABALHADAS: {fmt_minutes(work_minutes(ps))}',font=bold,fill=(25,25,25)); y+=40
+ d.text((35,y),'Documento gerado pelo Ponto Online Pro.',font=small,fill=(90,90,90))
+ out=io.BytesIO(); img.crop((0,0,width,min(height,y+35))).save(out,format='PNG'); out.seek(0)
+ return send_file(out,mimetype='image/png',as_attachment=True,download_name=f'espelho_ponto_{u.matricula or u.id}_{start}_{end}.png')
 
 @bp.route('/admin/punch/<int:id>/proof')
 @login_required('admin')
