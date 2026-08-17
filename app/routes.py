@@ -1,5 +1,14 @@
 import os, math, base64, re, csv, io
 from datetime import datetime,date,timedelta
+from zoneinfo import ZoneInfo
+
+TZ = ZoneInfo('America/Cuiaba')
+
+def local_now():
+    return datetime.now(TZ).replace(tzinfo=None)
+
+def local_today():
+    return local_now().date()
 from functools import wraps
 from flask import Blueprint,render_template,request,redirect,url_for,session,flash,jsonify,current_app,send_from_directory,make_response
 from app import db
@@ -42,7 +51,7 @@ def inject():
         fp=os.path.join(current_app.instance_path,'certs','server_ip.txt')
         if os.path.exists(fp): ip=open(fp,encoding='utf-8').read().strip() or ip
     except Exception: pass
-    return {'me':current_user(),'fmt_minutes':fmt_minutes,'lan_ip':ip,'employee_login_url':f'https://{ip}:5000/login'}
+    return {'me':current_user(),'fmt_minutes':fmt_minutes,'lan_ip':ip,'employee_login_url':request.host_url.rstrip('/')+'/login'}
 
 @bp.route('/')
 def home():
@@ -63,7 +72,7 @@ def logout(): session.clear(); return redirect(url_for('main.login'))
 @login_required('admin')
 def admin_dashboard():
  c=current_user().company; emps=User.query.filter_by(company_id=c.id,role='employee').order_by(User.name).all(); ps=Punch.query.filter_by(company_id=c.id).order_by(Punch.timestamp.desc()).limit(30).all()
- today=[p for p in ps if p.timestamp.date()==date.today()]
+ today=[p for p in ps if p.timestamp.date()==local_today()]
  return render_template('admin.html',company=c,employees=emps,punches=ps,today_count=len(today),pending=Correction.query.filter_by(company_id=c.id,status='PENDENTE').count())
 
 @bp.route('/admin/company',methods=['GET','POST'])
@@ -136,7 +145,7 @@ def review_correction(id,action):
    p=Punch.query.get(x.punch_id); p.timestamp=x.requested_time; p.edited=True; p.correction_note=x.reason
   x.status='APROVADA'
  else: x.status='REPROVADA'
- x.reviewed_at=datetime.now(); x.reviewed_by=current_user().id; x.review_note=request.form.get('review_note',''); db.session.commit(); audit('ANALISOU_CORRECAO',f'{x.id}:{x.status}'); return redirect(url_for('main.corrections'))
+ x.reviewed_at=local_now(); x.reviewed_by=current_user().id; x.review_note=request.form.get('review_note',''); db.session.commit(); audit('ANALISOU_CORRECAO',f'{x.id}:{x.status}'); return redirect(url_for('main.corrections'))
 
 @bp.route('/admin/holidays',methods=['GET','POST'])
 @login_required('admin')
@@ -152,7 +161,7 @@ def audit_page(): return render_template('audit.html',items=AuditLog.query.filte
 @bp.route('/admin/report')
 @login_required('admin')
 def report():
- c=current_user().company; start=request.args.get('start') or date.today().replace(day=1).isoformat(); end=request.args.get('end') or date.today().isoformat(); a=datetime.strptime(start,'%Y-%m-%d'); b=datetime.strptime(end,'%Y-%m-%d')+timedelta(days=1)
+ c=current_user().company; start=request.args.get('start') or local_today().replace(day=1).isoformat(); end=request.args.get('end') or local_today().isoformat(); a=datetime.strptime(start,'%Y-%m-%d'); b=datetime.strptime(end,'%Y-%m-%d')+timedelta(days=1)
  rows=[]
  for u in User.query.filter_by(company_id=c.id,role='employee').order_by(User.name):
   ps=Punch.query.filter(Punch.employee_id==u.id,Punch.timestamp>=a,Punch.timestamp<b).order_by(Punch.timestamp).all(); rows.append((u,ps,work_minutes(ps)))
@@ -161,7 +170,7 @@ def report():
 @bp.route('/employee')
 @login_required('employee')
 def employee():
- u=current_user(); start=request.args.get('start') or date.today().replace(day=1).isoformat(); end=request.args.get('end') or date.today().isoformat(); q=Punch.query.filter(Punch.employee_id==u.id,Punch.timestamp>=datetime.strptime(start,'%Y-%m-%d'),Punch.timestamp<datetime.strptime(end,'%Y-%m-%d')+timedelta(days=1)); ps=q.order_by(Punch.timestamp.desc()).all(); return render_template('employee.html',punches=ps,filters={'start':start,'end':end})
+ u=current_user(); start=request.args.get('start') or local_today().replace(day=1).isoformat(); end=request.args.get('end') or local_today().isoformat(); q=Punch.query.filter(Punch.employee_id==u.id,Punch.timestamp>=datetime.strptime(start,'%Y-%m-%d'),Punch.timestamp<datetime.strptime(end,'%Y-%m-%d')+timedelta(days=1)); ps=q.order_by(Punch.timestamp.desc()).all(); return render_template('employee.html',punches=ps,filters={'start':start,'end':end})
 
 @bp.route('/employee/correction',methods=['POST'])
 @login_required('employee')
@@ -183,7 +192,7 @@ def punch_api():
  if photo.startswith('data:image/'):
   m=re.match(r'data:image/(png|jpeg|jpg);base64,(.*)',photo)
   if m:
-   ext='jpg' if m.group(1) in ('jpeg','jpg') else 'png'; name=f'punch_{u.id}_{datetime.now().strftime("%Y%m%d_%H%M%S_%f")}.{ext}'
+   ext='jpg' if m.group(1) in ('jpeg','jpg') else 'png'; name=f'punch_{u.id}_{local_now().strftime("%Y%m%d_%H%M%S_%f")}.{ext}'
    with open(os.path.join(current_app.config['UPLOAD_FOLDER'],name),'wb') as f: f.write(base64.b64decode(m.group(2)))
    path=name
  if not path: return jsonify(ok=False,message='A foto da batida é obrigatória.'),400

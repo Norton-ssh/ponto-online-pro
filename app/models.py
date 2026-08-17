@@ -1,4 +1,10 @@
 from datetime import datetime
+from zoneinfo import ZoneInfo
+
+TZ = ZoneInfo('America/Cuiaba')
+
+def local_now():
+    return datetime.now(TZ).replace(tzinfo=None)
 from werkzeug.security import generate_password_hash, check_password_hash
 from app import db
 
@@ -23,13 +29,13 @@ class User(db.Model):
 
 class Punch(db.Model):
     id=db.Column(db.Integer,primary_key=True); company_id=db.Column(db.Integer,db.ForeignKey('company.id'),nullable=False); employee_id=db.Column(db.Integer,db.ForeignKey('user.id'),nullable=False)
-    timestamp=db.Column(db.DateTime,default=datetime.now,nullable=False); kind=db.Column(db.String(40),nullable=False); photo_path=db.Column(db.String(255))
+    timestamp=db.Column(db.DateTime,default=local_now,nullable=False); kind=db.Column(db.String(40),nullable=False); photo_path=db.Column(db.String(255))
     latitude=db.Column(db.Float); longitude=db.Column(db.Float); distance_m=db.Column(db.Float); ip=db.Column(db.String(80)); user_agent=db.Column(db.String(255))
     edited=db.Column(db.Boolean,default=False); correction_note=db.Column(db.String(500)); employee=db.relationship('User'); company=db.relationship('Company')
 
 class Correction(db.Model):
     id=db.Column(db.Integer,primary_key=True); company_id=db.Column(db.Integer,db.ForeignKey('company.id'),nullable=False); employee_id=db.Column(db.Integer,db.ForeignKey('user.id'),nullable=False)
-    punch_id=db.Column(db.Integer,db.ForeignKey('punch.id')); requested_at=db.Column(db.DateTime,default=datetime.now); requested_time=db.Column(db.DateTime,nullable=False)
+    punch_id=db.Column(db.Integer,db.ForeignKey('punch.id')); requested_at=db.Column(db.DateTime,default=local_now); requested_time=db.Column(db.DateTime,nullable=False)
     reason=db.Column(db.String(500),nullable=False); status=db.Column(db.String(20),default='PENDENTE'); reviewed_at=db.Column(db.DateTime); reviewed_by=db.Column(db.Integer); review_note=db.Column(db.String(500))
     employee=db.relationship('User'); punch=db.relationship('Punch')
 
@@ -38,4 +44,4 @@ class Holiday(db.Model):
 
 class AuditLog(db.Model):
     id=db.Column(db.Integer,primary_key=True); company_id=db.Column(db.Integer,db.ForeignKey('company.id')); user_id=db.Column(db.Integer,db.ForeignKey('user.id'))
-    action=db.Column(db.String(120),nullable=False); details=db.Column(db.String(1000)); created_at=db.Column(db.DateTime,default=datetime.now); ip=db.Column(db.String(80))
+    action=db.Column(db.String(120),nullable=False); details=db.Column(db.String(1000)); created_at=db.Column(db.DateTime,default=local_now); ip=db.Column(db.String(80))
