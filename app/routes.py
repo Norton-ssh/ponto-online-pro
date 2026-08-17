@@ -10,7 +10,7 @@ def local_now():
 def local_today():
     return local_now().date()
 from functools import wraps
-from flask import Blueprint,render_template,request,redirect,url_for,session,flash,jsonify,current_app,send_from_directory,make_response
+from flask import Blueprint,render_template,request,redirect,url_for,session,flash,jsonify,current_app,send_from_directory,send_file,make_response
 from app import db
 from app.models import Company,User,Punch,Correction,Holiday,AuditLog
 bp=Blueprint('main',__name__)
@@ -43,6 +43,17 @@ def work_minutes(punches):
  return total
 
 def fmt_minutes(m): return f'{m//60:02d}:{m%60:02d}'
+
+def next_punch_kind(employee_id):
+ last=Punch.query.filter_by(employee_id=employee_id).order_by(Punch.timestamp.desc()).first()
+ kinds=['ENTRADA','INTERVALO - SAÍDA','INTERVALO - RETORNO','SAÍDA']
+ return kinds[0] if not last or last.kind=='SAÍDA' else kinds[min(kinds.index(last.kind)+1,len(kinds)-1)]
+
+def punches_by_day(punches):
+ groups={}
+ for p in sorted(punches,key=lambda x:x.timestamp): groups.setdefault(p.timestamp.date(),[]).append(p)
+ return groups
+
 
 @bp.context_processor
 def inject():
@@ -161,16 +172,88 @@ def audit_page(): return render_template('audit.html',items=AuditLog.query.filte
 @bp.route('/admin/report')
 @login_required('admin')
 def report():
- c=current_user().company; start=request.args.get('start') or local_today().replace(day=1).isoformat(); end=request.args.get('end') or local_today().isoformat(); a=datetime.strptime(start,'%Y-%m-%d'); b=datetime.strptime(end,'%Y-%m-%d')+timedelta(days=1)
+ c=current_user().company
+ start=request.args.get('start') or local_today().replace(day=1).isoformat()
+ end=request.args.get('end') or local_today().isoformat()
+ employee_id=request.args.get('employee','')
+ a=datetime.strptime(start,'%Y-%m-%d'); b=datetime.strptime(end,'%Y-%m-%d')+timedelta(days=1)
+ employees=User.query.filter_by(company_id=c.id,role='employee').order_by(User.name).all()
+ selected=User.query.filter_by(id=int(employee_id),company_id=c.id,role='employee').first() if employee_id else None
+ users=[selected] if selected else employees
  rows=[]
- for u in User.query.filter_by(company_id=c.id,role='employee').order_by(User.name):
-  ps=Punch.query.filter(Punch.employee_id==u.id,Punch.timestamp>=a,Punch.timestamp<b).order_by(Punch.timestamp).all(); rows.append((u,ps,work_minutes(ps)))
- return render_template('report.html',rows=rows,start=start,end=end)
+ for u in users:
+  ps=Punch.query.filter(Punch.employee_id==u.id,Punch.timestamp>=a,Punch.timestamp<b).order_by(Punch.timestamp).all()
+  rows.append({'employee':u,'days':punches_by_day(ps),'total':work_minutes(ps),'count':len(ps)})
+ return render_template('report.html',rows=rows,start=start,end=end,employees=employees,selected_employee=employee_id,company=c)
+
+@bp.route('/admin/report.csv')
+@login_required('admin')
+def report_csv():
+ c=current_user().company; start=request.args.get('start') or local_today().replace(day=1).isoformat(); end=request.args.get('end') or local_today().isoformat(); employee_id=request.args.get('employee')
+ a=datetime.strptime(start,'%Y-%m-%d'); b=datetime.strptime(end,'%Y-%m-%d')+timedelta(days=1)
+ q=Punch.query.filter(Punch.company_id==c.id,Punch.timestamp>=a,Punch.timestamp<b)
+ if employee_id: q=q.filter(Punch.employee_id==int(employee_id))
+ out=io.StringIO(); w=csv.writer(out,delimiter=';'); w.writerow(['Funcionário','Matrícula','CPF','Data','Hora','Tipo','Distância','Editado'])
+ for p in q.order_by(Punch.employee_id,Punch.timestamp).all(): w.writerow([p.employee.name,p.employee.matricula,p.employee.cpf,p.timestamp.strftime('%d/%m/%Y'),p.timestamp.strftime('%H:%M:%S'),p.kind,f'{p.distance_m:.0f} m' if p.distance_m else '', 'SIM' if p.edited else 'NÃO'])
+ r=make_response('\ufeff'+out.getvalue()); r.headers['Content-Disposition']='attachment; filename=folha_ponto.csv'; r.headers['Content-Type']='text/csv; charset=utf-8'; return r
+
+@bp.route('/admin/report/print')
+@login_required('admin')
+def report_print():
+ args=request.args.to_dict(); args['print']='1'; return redirect(url_for('main.report',**args))
+
+@bp.route('/admin/punch/<int:id>/proof')
+@login_required('admin')
+def admin_punch_proof(id):
+ return generate_proof(id,admin=True)
 
 @bp.route('/employee')
 @login_required('employee')
 def employee():
- u=current_user(); start=request.args.get('start') or local_today().replace(day=1).isoformat(); end=request.args.get('end') or local_today().isoformat(); q=Punch.query.filter(Punch.employee_id==u.id,Punch.timestamp>=datetime.strptime(start,'%Y-%m-%d'),Punch.timestamp<datetime.strptime(end,'%Y-%m-%d')+timedelta(days=1)); ps=q.order_by(Punch.timestamp.desc()).all(); return render_template('employee.html',punches=ps,filters={'start':start,'end':end})
+ u=current_user(); today=local_today(); ps_today=Punch.query.filter(Punch.employee_id==u.id,Punch.timestamp>=datetime.combine(today,datetime.min.time()),Punch.timestamp<datetime.combine(today+timedelta(days=1),datetime.min.time())).order_by(Punch.timestamp).all()
+ return render_template('employee.html',employee=u,company=u.company,punches_today=ps_today,next_kind=next_punch_kind(u.id),now=local_now())
+
+@bp.route('/employee/points')
+@login_required('employee')
+def employee_points():
+ u=current_user(); start=request.args.get('start') or local_today().replace(day=1).isoformat(); end=request.args.get('end') or local_today().isoformat(); a=datetime.strptime(start,'%Y-%m-%d'); b=datetime.strptime(end,'%Y-%m-%d')+timedelta(days=1)
+ ps=Punch.query.filter(Punch.employee_id==u.id,Punch.timestamp>=a,Punch.timestamp<b).order_by(Punch.timestamp).all()
+ return render_template('employee_points.html',employee=u,company=u.company,days=punches_by_day(ps),start=start,end=end,total=len(ps))
+
+@bp.route('/employee/punch/<int:id>/proof')
+@login_required('employee')
+def employee_punch_proof(id):
+ return generate_proof(id,admin=False)
+
+def generate_proof(id,admin=False):
+ p=Punch.query.get_or_404(id); u=current_user()
+ if not admin and (u.role!='employee' or p.employee_id!=u.id): return ('Acesso negado',403)
+ if admin and (u.role!='admin' or p.company_id!=u.company.id): return ('Acesso negado',403)
+ from PIL import Image,ImageDraw,ImageFont
+ try:
+  font_path='/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf'; bold_path='/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf'
+  font=ImageFont.truetype(font_path,28); bold=ImageFont.truetype(bold_path,34); small=ImageFont.truetype(font_path,22)
+ except Exception:
+  font=ImageFont.load_default(); bold=font; small=font
+ photo=None
+ if p.photo_path:
+  path=os.path.join(current_app.config['UPLOAD_FOLDER'],os.path.basename(p.photo_path))
+  if os.path.exists(path):
+   try: photo=Image.open(path).convert('RGB')
+   except Exception: photo=None
+ width=1000; height=1300 if photo else 760
+ img=Image.new('RGB',(width,height),'white'); d=ImageDraw.Draw(img)
+ d.rectangle((0,0,width,150),fill=(67,31,180)); d.text((45,35),p.company.name[:42],font=bold,fill='white')
+ d.text((45,100),'COMPROVANTE DE PONTO',font=font,fill='white')
+ y=190
+ lines=[('Funcionário',p.employee.name),('Matrícula',p.employee.matricula or '-'),('CPF',p.employee.cpf or '-'),('Data',p.timestamp.strftime('%d/%m/%Y')),('Hora',p.timestamp.strftime('%H:%M:%S')),('Tipo',p.kind),('Descrição','Registro original' if not p.edited else ('Registro corrigido: '+(p.correction_note or ''))),('Distância',f'{p.distance_m:.0f} m' if p.distance_m is not None else '-')]
+ for label,value in lines:
+  d.text((55,y),label+':',font=bold,fill=(35,35,35)); d.text((300,y),str(value)[:55],font=font,fill=(35,35,35)); y+=52
+ if photo:
+  maxw=900; maxh=520; photo.thumbnail((maxw,maxh)); x=(width-photo.width)//2; d.rectangle((x-8,y-8,x+photo.width+8,y+photo.height+8),outline=(67,31,180),width=4); img.paste(photo,(x,y)); y+=photo.height+35
+ d.text((55,height-55),'Ponto Online Pro • Comprovante de registro',font=small,fill=(90,90,90))
+ out=io.BytesIO(); img.save(out,format='PNG'); out.seek(0)
+ return send_file(out,mimetype='image/png',as_attachment=True,download_name=f'comprovante_ponto_{p.id}.png')
 
 @bp.route('/employee/correction',methods=['POST'])
 @login_required('employee')
