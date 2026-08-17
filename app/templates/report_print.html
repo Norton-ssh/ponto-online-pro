@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Espelho de Ponto</title>
+<style>
+@page { size: A4 portrait; margin: 4.5mm 6mm 4.5mm 6mm; }
+* { box-sizing: border-box; }
+html, body { margin:0; padding:0; background:#fff; color:#111; font-family: Arial, Helvetica, sans-serif; }
+body { font-size: 7.2pt; }
+.sheet { width:100%; page-break-after: always; position:relative; }
+.sheet:last-child { page-break-after:auto; }
+.header-title { text-align:center; font-size:12.5pt; font-weight:700; line-height:1; margin:0 0 0.7mm; }
+.period { text-align:center; font-size:7.5pt; font-weight:700; margin-bottom:1.5mm; }
+.section-title { text-align:center; font-weight:700; border-top:0.8px solid #111; border-bottom:0.8px solid #111; padding:0.6mm 0; margin-top:0.9mm; }
+.company-grid, .employee-grid { display:grid; grid-template-columns: 1fr 1fr 1fr; column-gap:3mm; padding:1mm 1.2mm; border-bottom:0.8px solid #111; line-height:1.2; }
+.company-grid .wide { grid-column: span 2; }
+.label { font-weight:700; }
+table.ponto { width:100%; border-collapse:collapse; table-layout:fixed; margin-top:1.5mm; font-size:6.8pt; }
+table.ponto th, table.ponto td { border:0.6px solid #222; padding:0.35mm 0.45mm; height:4.45mm; text-align:center; vertical-align:middle; }
+table.ponto th { font-weight:700; font-size:6.7pt; height:6.5mm; }
+table.ponto .date { width:17%; text-align:left; padding-left:1mm; }
+table.ponto .time { width:11.5%; }
+table.ponto .total { width:12%; }
+table.ponto .normal { width:12.5%; }
+table.ponto tr.weekend td { font-weight:600; }
+table.ponto tr.holiday td { font-weight:600; }
+.summary-title { font-weight:700; font-size:7.8pt; margin-top:1.8mm; margin-bottom:0.8mm; }
+.summary { width:100%; border:0.6px solid #222; padding:1.2mm 2mm; display:grid; grid-template-columns:1fr 1fr; row-gap:0.7mm; column-gap:8mm; font-size:7.2pt; }
+.summary div { display:flex; justify-content:flex-start; gap:2mm; }
+.summary .label { min-width:34mm; }
+.obs { margin-top:1.8mm; font-size:7.2pt; }
+.obs-title { font-weight:700; margin-bottom:1mm; }
+.line { border-bottom:0.6px solid #222; height:3.8mm; }
+.signatures { display:grid; grid-template-columns:1fr 1fr; gap:20mm; margin-top:4.5mm; }
+.sig { text-align:center; font-size:7.2pt; }
+.sig .line { height:0; border-bottom:0.8px solid #111; margin-bottom:2mm; }
+.generated { position:absolute; right:0; bottom:1mm; font-size:6.5pt; color:#555; }
+.no-print { display:none; }
+</style>
+</head>
+<body>
+{% for s in sheets %}
+<section class="sheet">
+  <div class="header-title">ESPELHO DE PONTO</div>
+  <div class="period">PERÍODO: {{ start[8:10] }}/{{ start[5:7] }}/{{ start[0:4] }} a {{ end[8:10] }}/{{ end[5:7] }}/{{ end[0:4] }}</div>
+
+  <div class="section-title">DADOS DO EMPREGADOR</div>
+  <div class="company-grid">
+    <div class="wide"><span class="label">EMPRESA:</span> {{ company.name or '-' }}</div>
+    <div><span class="label">CNPJ:</span> {{ company.cnpj or '-' }}</div>
+    <div class="wide"><span class="label">ENDEREÇO:</span> {{ company.address or '-' }}</div>
+    <div><span class="label">GERADO EM:</span> {{ generated.strftime('%d/%m/%Y às %H:%M') }}</div>
+  </div>
+
+  <div class="section-title">DADOS DO EMPREGADO</div>
+  <div class="employee-grid">
+    <div class="wide"><span class="label">NOME:</span> {{ s.employee.name }}</div>
+    <div><span class="label">CARGO:</span> {{ s.employee.cargo or '-' }}</div>
+    <div><span class="label">MATRÍCULA:</span> {{ s.employee.matricula or '-' }}</div>
+    <div><span class="label">CPF:</span> {{ s.employee.cpf or '-' }}</div>
+    <div><span class="label">DEPARTAMENTO:</span> {{ s.employee.department or '-' }}</div>
+  </div>
+
+  <div class="section-title">MARCAÇÕES</div>
+  <table class="ponto">
+    <thead>
+      <tr>
+        <th class="date">DATA</th>
+        <th class="time">ENTRADA</th>
+        <th class="time">SAÍDA</th>
+        <th class="time">ENTRADA</th>
+        <th class="time">SAÍDA</th>
+        <th class="total">TOTAL<br>HORAS</th>
+        <th class="normal">HORA<br>NORMAL</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for d in s.days %}
+      <tr class="{% if d.date.weekday() >= 5 %}weekend{% endif %}">
+        <td class="date">{{ d.date.strftime('%d/%m') }} {{ ['SEG','TER','QUA','QUI','SEX','SÁB','DOM'][d.date.weekday()] }}</td>
+        {% for t in d.times %}<td class="time">{{ t }}</td>{% endfor %}
+        <td class="total">{{ fmt_minutes(d.total) }}</td>
+        <td class="normal">{{ fmt_minutes(d.normal) }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+
+  <div class="summary-title">RESUMO DO PERÍODO</div>
+  <div class="summary">
+    <div><span class="label">HORAS TRABALHADAS:</span><span>{{ fmt_minutes(s.total) }}</span></div>
+    <div><span class="label">HORAS NORMAIS:</span><span>{{ fmt_minutes(s.normal_total) }}</span></div>
+    <div><span class="label">FALTAS:</span><span>{{ s.absences }}</span></div>
+    <div><span class="label">ATESTADOS:</span><span>{{ s.attestations }}</span></div>
+    <div><span class="label">DIAS TRABALHADOS:</span><span>{{ s.worked_days }}</span></div>
+    <div><span class="label">DIAS ÚTEIS:</span><span>{{ s.useful_days }}</span></div>
+  </div>
+
+  <div class="obs">
+    <div class="obs-title">OBSERVAÇÕES:</div>
+    <div class="line"></div>
+    <div class="line"></div>
+  </div>
+
+  <div class="signatures">
+    <div class="sig"><div class="line"></div>Responsável pela empresa</div>
+    <div class="sig"><div class="line"></div>Empregado</div>
+  </div>
+  <div class="generated">Ponto Online Pro</div>
+</section>
+{% endfor %}
+</body>
+</html>
