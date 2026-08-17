@@ -1,42 +1,45 @@
 <!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Relatórios — Ponto Online Pro</title><style>
-*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f5f4f7;color:#172033}.top{background:#101827;color:#fff;padding:18px 24px;font-size:24px;font-weight:700}.nav{background:#fff;padding:12px 24px;display:flex;gap:18px;flex-wrap:wrap;box-shadow:0 2px 8px #0001}.nav a{color:#32118e;text-decoration:none;font-weight:700}.wrap{max-width:1250px;margin:22px auto;padding:0 16px}.filters,.card,.report-box{background:#fff;border-radius:14px;padding:18px;margin-bottom:18px;box-shadow:0 2px 10px #0001}.filters form{display:grid;grid-template-columns:1fr 1fr 1.5fr auto auto;gap:10px}.filters input,.filters select,.filters button,.btn{padding:12px;border:1px solid #ddd;border-radius:8px;font-size:15px}.filters button,.btn.primary{background:#4b16d8;color:#fff;border:0;font-weight:700}.btn.dark{background:#101827;color:#fff}.btn{display:inline-block;text-decoration:none;font-weight:700}.report-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}.report-card{background:#fff;border-radius:14px;padding:18px;min-height:145px;box-shadow:0 2px 10px #0001;border:1px solid #eee}.report-card h3{margin:8px 0 7px;font-size:18px}.report-card p{margin:0;color:#555;font-size:13px;line-height:1.35}.icon{width:34px;height:34px;border-radius:9px;background:#eee7ff;color:#4b16d8;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:18px}.report-card a{display:block;color:#3513a2;text-decoration:none}.titleline{display:flex;justify-content:space-between;align-items:center;gap:12px}.titleline h2{margin:0}.muted{color:#666}.actions{display:flex;gap:8px;flex-wrap:wrap}.summary{display:flex;gap:10px;flex-wrap:wrap;margin:14px 0}.pill{background:#f0ecff;color:#3f159e;padding:9px 13px;border-radius:10px;font-weight:700}.espelho{border:1px solid #bbb;margin-top:16px}.espelho .company{text-align:center;border-bottom:1px solid #222;padding:9px}.espelho .company h1{font-size:20px;margin:0 0 3px}.espelho .period{font-size:13px}.empdata{border-bottom:1px solid #222;padding:9px;text-align:center}.empdata strong{font-size:16px}.table-head,.dayrow{display:grid;grid-template-columns:135px 1fr 90px 180px;gap:0}.table-head{font-weight:700;border-bottom:1px solid #222;background:#eee}.table-head div,.dayrow div{padding:7px 9px;border-right:1px solid #ddd}.dayrow{min-height:38px;border-bottom:1px solid #ddd}.dayrow:nth-child(even){background:#eee}.mark{display:flex;flex-wrap:wrap;gap:7px}.mark span{font-family:monospace;font-weight:700}.daytotal{text-align:center;font-family:monospace;font-weight:700}.description{font-size:12px}.synthetic table{width:100%;border-collapse:collapse}.synthetic th,.synthetic td{padding:9px;border:1px solid #ddd;text-align:left}.synthetic th{background:#eee}.empty{padding:28px;color:#777;text-align:center}.hide{display:none}@media(max-width:900px){.report-grid{grid-template-columns:repeat(2,1fr)}.filters form{grid-template-columns:1fr 1fr}.table-head,.dayrow{grid-template-columns:105px 1fr 70px 120px}}@media(max-width:600px){.report-grid{grid-template-columns:1fr}.filters form{grid-template-columns:1fr}.table-head,.dayrow{grid-template-columns:90px 1fr}.table-head div:nth-child(3),.table-head div:nth-child(4),.dayrow div:nth-child(3),.dayrow div:nth-child(4){display:none}}@media print{
-.nav,.filters,.report-grid,.no-print{display:none!important}
-body{background:#fff;color:#000}
-.top{display:none!important}
-.wrap{max-width:none;padding:0;margin:0}
-.report-box{box-shadow:none;border:0;margin:0;padding:0}
-.screen-report{display:none!important}
-.print-espelho{display:block!important}
+*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f5f4f7;color:#172033}.top{background:#101827;color:#fff;padding:18px 24px;font-size:24px;font-weight:700}.nav{background:#fff;padding:12px 24px;display:flex;gap:18px;flex-wrap:wrap;box-shadow:0 2px 8px #0001}.nav a{color:#32118e;text-decoration:none;font-weight:700}.wrap{max-width:1250px;margin:22px auto;padding:0 16px}.filters,.card,.report-box{background:#fff;border-radius:14px;padding:18px;margin-bottom:18px;box-shadow:0 2px 10px #0001}.filters form{display:grid;grid-template-columns:1fr 1fr 1.5fr auto auto;gap:10px}.filters input,.filters select,.filters button,.btn{padding:12px;border:1px solid #ddd;border-radius:8px;font-size:15px}.filters button,.btn.primary{background:#4b16d8;color:#fff;border:0;font-weight:700}.btn.dark{background:#101827;color:#fff}.btn{display:inline-block;text-decoration:none;font-weight:700}.report-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}.report-card{background:#fff;border-radius:14px;padding:18px;min-height:145px;box-shadow:0 2px 10px #0001;border:1px solid #eee}.report-card h3{margin:8px 0 7px;font-size:18px}.report-card p{margin:0;color:#555;font-size:13px;line-height:1.35}.icon{width:34px;height:34px;border-radius:9px;background:#eee7ff;color:#4b16d8;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:18px}.report-card a{display:block;color:#3513a2;text-decoration:none}.titleline{display:flex;justify-content:space-between;align-items:center;gap:12px}.titleline h2{margin:0}.muted{color:#666}.actions{display:flex;gap:8px;flex-wrap:wrap}.summary{display:flex;gap:10px;flex-wrap:wrap;margin:14px 0}.pill{background:#f0ecff;color:#3f159e;padding:9px 13px;border-radius:10px;font-weight:700}.espelho{border:1px solid #bbb;margin-top:16px}.espelho .company{text-align:center;border-bottom:1px solid #222;padding:9px}.espelho .company h1{font-size:20px;margin:0 0 3px}.espelho .period{font-size:13px}.empdata{border-bottom:1px solid #222;padding:9px;text-align:center}.empdata strong{font-size:16px}.table-head,.dayrow{display:grid;grid-template-columns:135px 1fr 90px 180px;gap:0}.table-head{font-weight:700;border-bottom:1px solid #222;background:#eee}.table-head div,.dayrow div{padding:7px 9px;border-right:1px solid #ddd}.dayrow{min-height:38px;border-bottom:1px solid #ddd}.dayrow:nth-child(even){background:#eee}.mark{display:flex;flex-wrap:wrap;gap:7px}.mark span{font-family:monospace;font-weight:700}.daytotal{text-align:center;font-family:monospace;font-weight:700}.description{font-size:12px}.synthetic table{width:100%;border-collapse:collapse}.synthetic th,.synthetic td{padding:9px;border:1px solid #ddd;text-align:left}.synthetic th{background:#eee}.empty{padding:28px;color:#777;text-align:center}.hide{display:none}@media(max-width:900px){.report-grid{grid-template-columns:repeat(2,1fr)}.filters form{grid-template-columns:1fr 1fr}.table-head,.dayrow{grid-template-columns:105px 1fr 70px 120px}}@media(max-width:600px){.report-grid{grid-template-columns:1fr}.filters form{grid-template-columns:1fr}.table-head,.dayrow{grid-template-columns:90px 1fr}.table-head div:nth-child(3),.table-head div:nth-child(4),.dayrow div:nth-child(3),.dayrow div:nth-child(4){display:none}}@page{size:A4 portrait;margin:7mm}
+@media print{
+  html,body{width:210mm!important;min-height:297mm!important;margin:0!important;padding:0!important;background:#fff!important}
+  body{font-family:Arial,sans-serif;color:#000!important}
+  .nav,.filters,.report-grid,.no-print,.top,.screen-report{display:none!important}
+  .wrap{width:196mm!important;max-width:196mm!important;margin:0 auto!important;padding:0!important}
+  .report-box{display:none!important}
+  .print-espelho{display:block!important;width:196mm!important;margin:0!important;padding:0!important}
+  .print-sheet{width:196mm!important;height:283mm!important;min-height:283mm!important;max-height:283mm!important;margin:0!important;padding:0!important;page-break-after:always;page-break-inside:avoid;overflow:hidden!important}
+  .print-sheet:last-child{page-break-after:auto}
+  .print-title{text-align:center;border-bottom:1px solid #000;padding:1mm 0 2mm}
+  .print-title h1{font-size:15px;line-height:16px;margin:0;font-weight:700}
+  .print-title .periodo{font-size:10px;font-weight:700;margin-top:1mm}
+  .print-meta{border-bottom:1px solid #000;padding:2mm 1.5mm 1.5mm}
+  .print-meta-title{text-align:center;font-weight:700;font-size:10px;border-bottom:1px solid #000;padding-bottom:1mm;margin-bottom:1.2mm}
+  .print-company{display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.5mm 4mm;line-height:4.2mm;font-size:8.5px}
+  .print-company .wide{grid-column:1/-1}
+  .print-employee{border-bottom:1px solid #000;padding:1.5mm;text-align:center}
+  .print-employee-title{font-weight:700;font-size:10px;border-bottom:1px solid #000;padding-bottom:1mm;margin-bottom:1mm}
+  .print-employee-line{display:grid;grid-template-columns:1fr 1fr 1fr;gap:2mm;font-size:8.5px;font-weight:700;line-height:4mm}
+  .print-employee-line span{font-weight:400}
+  .print-employee>div:last-child{margin-top:0.5mm!important;font-size:8px!important}
+  .print-mark-title{text-align:center;font-weight:700;font-size:10px;padding:1.2mm 0 0.8mm}
+  .print-table{width:100%!important;border-collapse:collapse!important;table-layout:fixed!important;margin:0!important}
+  .print-table th,.print-table td{border:1px solid #222!important;padding:0.7mm 0.8mm!important;height:5.7mm!important;max-height:5.7mm!important;line-height:3.8mm!important;vertical-align:middle!important;overflow:hidden!important}
+  .print-table th{font-size:8px!important;text-align:center!important;height:8mm!important;max-height:8mm!important;line-height:3.5mm!important}
+  .print-table td{font-size:8px!important}
+  .print-table .date{width:23%!important;font-weight:700;text-align:left}
+  .print-table .mark{width:13%!important;text-align:center!important;font-family:monospace!important;font-weight:400!important}
+  .print-table .total{width:12%!important;text-align:center!important;font-family:monospace!important}
+  .print-table .normal{width:12%!important;text-align:center!important;font-family:monospace!important}
+  .print-table tbody tr:nth-child(odd){background:#f3f3f3!important}
+  .print-table .emptyday{color:#666}
+  .print-table td.mark{display:table-cell!important;flex:none!important;flex-wrap:unset!important;gap:0!important}
+  .print-footer{margin-top:3mm!important;border:1px solid #222!important;padding:1.5mm 2mm!important;font-size:8px!important;display:grid!important;grid-template-columns:1fr 1fr!important;gap:1mm 5mm!important;line-height:4mm!important}
+  .print-footer .full{grid-column:1/-1}
+  .print-sign{margin-top:7mm!important;display:grid!important;grid-template-columns:1fr 1fr!important;gap:35mm!important;text-align:center!important;font-size:8.5px!important}
+  .print-sign div{border-top:1px solid #000!important;padding-top:1.5mm!important}
 }
 @media screen{.print-espelho{display:none}}
 .print-espelho{font-family:Arial,sans-serif;color:#000;font-size:11px}
-.print-sheet{width:100%;page-break-after:always;page-break-inside:avoid}
-.print-sheet:last-child{page-break-after:auto}
-.print-title{text-align:center;border-bottom:1px solid #000;padding:2px 0 5px}
-.print-title h1{font-size:18px;line-height:19px;margin:0;font-weight:700}
-.print-title .periodo{font-size:12px;font-weight:700;margin-top:2px}
-.print-meta{border-bottom:1px solid #000;padding:5px 4px 4px}
-.print-meta-title{text-align:center;font-weight:700;font-size:13px;border-bottom:1px solid #000;padding-bottom:3px;margin-bottom:4px}
-.print-company{display:grid;grid-template-columns:1fr 1fr 1fr;gap:2px 10px;line-height:15px}
-.print-company .wide{grid-column:1/-1}
-.print-employee{border-bottom:1px solid #000;padding:4px;text-align:center}
-.print-employee-title{font-weight:700;font-size:13px;border-bottom:1px solid #000;padding-bottom:3px;margin-bottom:3px}
-.print-employee-line{display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;font-size:12px;font-weight:700}
-.print-employee-line span{font-weight:400}
-.print-mark-title{text-align:center;font-weight:700;font-size:13px;padding:4px 0 2px}
-.print-table{width:100%;border-collapse:collapse;table-layout:fixed}
-.print-table th,.print-table td{border:1px solid #222;padding:2px 3px;height:5.2mm;vertical-align:middle}
-.print-table th{font-size:9px;text-align:center;height:8mm}
-.print-table td{font-size:8.5px}
-.print-table .date{width:12%;font-weight:700}
-.print-table .mark{width:7.2%;text-align:center;font-family:monospace}
-.print-table .desc{width:16%;font-size:9px}
-.print-table tbody tr:nth-child(odd){background:#eee}
-.print-table .emptyday{color:#666}
-.print-footer{margin-top:4mm;border:1px solid #222;padding:2.5mm 3mm;font-size:8.5px;display:grid;grid-template-columns:1fr 1fr;gap:2mm 8mm}
-.print-sign{margin-top:10mm;display:grid;grid-template-columns:1fr 1fr;gap:80px;text-align:center;font-size:10px}
-.print-sign div{border-top:1px solid #000;padding-top:3px}
-
 </style></head><body>
 <div class="top">Ponto Online Pro — Relatórios</div><div class="nav"><a href="{{ url_for('main.admin_dashboard') }}">Início</a><a href="{{ url_for('main.employees') }}">Funcionários</a><a href="{{ url_for('main.admin_punches') }}">Pontos</a><a href="{{ url_for('main.report') }}">Relatórios</a><a href="{{ url_for('main.corrections') }}">Correções</a><a href="{{ url_for('main.company_edit') }}">Empresa</a><a href="{{ url_for('main.logout') }}">Sair</a></div>
 <main class="wrap">
@@ -100,28 +103,34 @@ body{background:#fff;color:#000}
   <table class="print-table">
     <thead><tr>
       <th class="date">DATA</th>
-      <th class="mark">ENT</th><th class="mark">SAI</th>
-      <th class="mark">ENT</th><th class="mark">SAI</th>
-      <th class="mark">ENT</th><th class="mark">SAI</th>
-      <th class="mark">ENT</th><th class="mark">SAI</th>
-      <th class="desc">DESCRIÇÃO DO ABONO</th>
+      <th class="mark">ENTRADA</th>
+      <th class="mark">SAÍDA</th>
+      <th class="mark">ENTRADA</th>
+      <th class="mark">SAÍDA</th>
+      <th class="total">TOTAL<br>HORAS</th>
+      <th class="normal">HORA<br>NORMAL</th>
     </tr></thead>
     <tbody>
     {% for day in row.calendar_days %}
       {% set ps = row.days.get(day, []) %}
       <tr>
         <td class="date">{{ day.strftime('%d/%m/%Y') }} {{ {'MON':'SEG','TUE':'TER','WED':'QUA','THU':'QUI','FRI':'SEX','SAT':'SAB','SUN':'DOM'}.get(day.strftime('%a').upper(),day.strftime('%a').upper()) }}</td>
-        {% for i in range(8) %}<td class="mark">{% if i < ps|length %}{{ ps[i].timestamp.strftime('%H:%M') }}{% endif %}</td>{% endfor %}
-        <td class="desc">{% for p in ps if p.edited %}{{ p.correction_note or 'Registro corrigido' }}{% if not loop.last %}; {% endif %}{% endfor %}</td>
+        {% for i in range(4) %}<td class="mark">{% if i < ps|length %}{{ ps[i].timestamp.strftime('%H:%M') }}{% endif %}</td>{% endfor %}
+        <td class="total">{{ fmt_minutes(work_minutes(ps)) }}</td>
+        <td class="normal">{% if day.weekday() < 5 and day not in holidays %}{{ fmt_minutes(row.daily_target) }}{% else %}00:00{% endif %}</td>
       </tr>
     {% endfor %}
-    {% if not row.workdays %}<tr><td colspan="10" class="emptyday">Nenhum dia útil no período.</td></tr>{% endif %}
     </tbody>
   </table>
   <div class="print-footer">
-    <div><b>TOTAL DE MARCAÇÕES:</b> {{ row.count }}</div>
     <div><b>HORAS TRABALHADAS:</b> {{ fmt_minutes(row.total) }}</div>
-    <div><b>JORNADA/DIA:</b> {{ fmt_minutes(row.daily_target) }}</div>
+    <div><b>HORAS NORMAIS:</b> {{ fmt_minutes(row.expected) }}</div>
+    <div><b>FALTAS:</b> {{ row.absence_count }}</div>
+    <div><b>ATESTADOS:</b> {{ row.attestations }}</div>
+    <div><b>DIAS TRABALHADOS:</b> {{ row.days|length }}</div>
+    <div><b>DIAS ÚTEIS:</b> {{ row.workdays|length }}</div>
+    <div class="full"><b>OBSERVAÇÕES:</b> ____________________________________________________________________________________</div>
+    <div class="full">____________________________________________________________________________________________________________</div>
   </div>
   <div class="print-sign"><div>Responsável pela empresa</div><div>Empregado</div></div>
 </div>

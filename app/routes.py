@@ -271,7 +271,8 @@ def report():
         selected_employee=employee_id,
         company=c,
         view=view,
-        now_print=local_now()
+        now_print=local_now(),
+        holidays=holidays
     )
 
 @bp.route('/admin/report.csv')
