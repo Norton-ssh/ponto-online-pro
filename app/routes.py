@@ -54,6 +54,17 @@ def punches_by_day(punches):
  for p in sorted(punches,key=lambda x:x.timestamp): groups.setdefault(p.timestamp.date(),[]).append(p)
  return groups
 
+def business_days(start_date,end_date,holidays=()):
+ holidays=set(holidays)
+ days=[]; d=start_date
+ while d<=end_date:
+  if d.weekday()<5 and d not in holidays: days.append(d)
+  d += timedelta(days=1)
+ return days
+
+def expected_minutes(company,days_count):
+ return int(round(((company.weekly_hours or 44)*60/5)*days_count))
+
 
 @bp.context_processor
 def inject():
@@ -62,7 +73,7 @@ def inject():
         fp=os.path.join(current_app.instance_path,'certs','server_ip.txt')
         if os.path.exists(fp): ip=open(fp,encoding='utf-8').read().strip() or ip
     except Exception: pass
-    return {'me':current_user(),'fmt_minutes':fmt_minutes,'lan_ip':ip,'employee_login_url':request.host_url.rstrip('/')+'/login'}
+    return {'me':current_user(),'fmt_minutes':fmt_minutes,'lan_ip':ip,'employee_login_url':request.host_url.rstrip('/')+'/login','work_minutes':work_minutes}
 
 @bp.route('/')
 def home():
@@ -176,15 +187,31 @@ def report():
  start=request.args.get('start') or local_today().replace(day=1).isoformat()
  end=request.args.get('end') or local_today().isoformat()
  employee_id=request.args.get('employee','')
+ view=request.args.get('view','espelho')
  a=datetime.strptime(start,'%Y-%m-%d'); b=datetime.strptime(end,'%Y-%m-%d')+timedelta(days=1)
+ start_date=a.date(); end_date=(b-timedelta(days=1)).date()
  employees=User.query.filter_by(company_id=c.id,role='employee').order_by(User.name).all()
- selected=User.query.filter_by(id=int(employee_id),company_id=c.id,role='employee').first() if employee_id else None
+ selected=User.query.filter_by(id=int(employee_id),company_id=c.id,role='employee').first() if employee_id and employee_id.isdigit() else None
  users=[selected] if selected else employees
+ holidays=[h.day for h in Holiday.query.filter(Holiday.company_id==c.id,Holiday.day>=start_date,Holiday.day<=end_date).all()]
+ workdays=business_days(start_date,end_date,holidays)
  rows=[]
  for u in users:
   ps=Punch.query.filter(Punch.employee_id==u.id,Punch.timestamp>=a,Punch.timestamp<b).order_by(Punch.timestamp).all()
-  rows.append({'employee':u,'days':punches_by_day(ps),'total':work_minutes(ps),'count':len(ps)})
- return render_template('report.html',rows=rows,start=start,end=end,employees=employees,selected_employee=employee_id,company=c)
+  total=work_minutes(ps)
+  rows.append({'employee':u,'days':punches_by_day(ps),'total':total,'count':len(ps)})
+ summary=[]; period_days=[]; absences=[]; adjustments=[]
+ for row in rows:
+  u=row['employee']; expected=expected_minutes(c,len(workdays)); balance=row['total']-expected
+  summary.append({'employee':u,'total':row['total'],'expected':expected,'balance':balance,'count':row['count']})
+  present_dates=set(row['days'].keys())
+  missing=[d for d in workdays if d not in present_dates]
+  absences.append({'employee':u,'days':missing,'count':len(missing)})
+  for d,ps in row['days'].items():
+   period_days.append({'date':d,'employee':u,'punches':ps,'total':work_minutes(ps)})
+   for p in ps:
+    if p.edited: adjustments.append(p)
+ return render_template('report.html',rows=rows,start=start,end=end,employees=employees,selected_employee=employee_id,company=c,view=view,summary=summary,absences=absences,adjustments=adjustments,period_days=sorted(period_days,key=lambda x:(x['date'],x['employee'].name),reverse=True),workdays=workdays)
 
 @bp.route('/admin/report.csv')
 @login_required('admin')
@@ -192,15 +219,48 @@ def report_csv():
  c=current_user().company; start=request.args.get('start') or local_today().replace(day=1).isoformat(); end=request.args.get('end') or local_today().isoformat(); employee_id=request.args.get('employee')
  a=datetime.strptime(start,'%Y-%m-%d'); b=datetime.strptime(end,'%Y-%m-%d')+timedelta(days=1)
  q=Punch.query.filter(Punch.company_id==c.id,Punch.timestamp>=a,Punch.timestamp<b)
- if employee_id: q=q.filter(Punch.employee_id==int(employee_id))
- out=io.StringIO(); w=csv.writer(out,delimiter=';'); w.writerow(['Funcionário','Matrícula','CPF','Data','Hora','Tipo','Distância','Editado'])
- for p in q.order_by(Punch.employee_id,Punch.timestamp).all(): w.writerow([p.employee.name,p.employee.matricula,p.employee.cpf,p.timestamp.strftime('%d/%m/%Y'),p.timestamp.strftime('%H:%M:%S'),p.kind,f'{p.distance_m:.0f} m' if p.distance_m else '', 'SIM' if p.edited else 'NÃO'])
+ if employee_id and employee_id.isdigit(): q=q.filter(Punch.employee_id==int(employee_id))
+ out=io.StringIO(); w=csv.writer(out,delimiter=';'); w.writerow(['Funcionário','Matrícula','CPF','Data','Hora','Tipo','Descrição','Distância','Editado'])
+ for p in q.order_by(Punch.employee_id,Punch.timestamp).all(): w.writerow([p.employee.name,p.employee.matricula,p.employee.cpf,p.timestamp.strftime('%d/%m/%Y'),p.timestamp.strftime('%H:%M:%S'),p.kind,('Registro corrigido: '+(p.correction_note or '')) if p.edited else 'Registro original',f'{p.distance_m:.0f} m' if p.distance_m is not None else '', 'SIM' if p.edited else 'NÃO'])
  r=make_response('\ufeff'+out.getvalue()); r.headers['Content-Disposition']='attachment; filename=folha_ponto.csv'; r.headers['Content-Type']='text/csv; charset=utf-8'; return r
 
 @bp.route('/admin/report/print')
 @login_required('admin')
 def report_print():
  args=request.args.to_dict(); args['print']='1'; return redirect(url_for('main.report',**args))
+
+@bp.route('/admin/report/proof')
+@login_required('admin')
+def report_proof():
+ c=current_user().company; employee_id=request.args.get('employee')
+ if not employee_id or not employee_id.isdigit(): return ('Selecione um funcionário.',400)
+ u=User.query.filter_by(id=int(employee_id),company_id=c.id,role='employee').first_or_404()
+ start=request.args.get('start') or local_today().replace(day=1).isoformat(); end=request.args.get('end') or local_today().isoformat()
+ a=datetime.strptime(start,'%Y-%m-%d'); b=datetime.strptime(end,'%Y-%m-%d')+timedelta(days=1)
+ ps=Punch.query.filter(Punch.employee_id==u.id,Punch.timestamp>=a,Punch.timestamp<b).order_by(Punch.timestamp).all()
+ from PIL import Image,ImageDraw,ImageFont
+ try:
+  font_path='/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf'; bold_path='/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf'
+  font=ImageFont.truetype(font_path,24); bold=ImageFont.truetype(bold_path,28); small=ImageFont.truetype(font_path,19)
+ except Exception:
+  font=ImageFont.load_default(); bold=font; small=font
+ lines=[]
+ for d,day_ps in punches_by_day(ps).items():
+  marks=' • '.join(f"{p.timestamp.strftime('%H:%M')} {p.kind}" for p in day_ps)
+  lines.append((d.strftime('%d/%m/%Y'),marks,fmt_minutes(work_minutes(day_ps))))
+ height=max(700,220+len(lines)*58)
+ img=Image.new('RGB',(1200,height),'white'); dr=ImageDraw.Draw(img)
+ dr.rectangle((0,0,1200,145),fill=(67,31,180)); dr.text((45,30),c.name[:55],font=bold,fill='white'); dr.text((45,85),'COMPROVANTE DE PONTOS — ESPELHO DO PERÍODO',font=font,fill='white')
+ y=185
+ for label,value in [('Funcionário',u.name),('Matrícula',u.matricula or '-'),('CPF',u.cpf or '-'),('Período',f"{a.strftime('%d/%m/%Y')} a {(b-timedelta(days=1)).strftime('%d/%m/%Y')}")]:
+  dr.text((45,y),label+':',font=bold,fill=(35,35,35)); dr.text((260,y),value,font=font,fill=(35,35,35)); y+=38
+ y+=12; dr.line((45,y,1155,y),fill=(180,180,180),width=2); y+=22
+ dr.text((45,y),'Data',font=bold,fill=(50,50,50)); dr.text((230,y),'Marcações',font=bold,fill=(50,50,50)); dr.text((1000,y),'Horas',font=bold,fill=(50,50,50)); y+=40
+ for d,marks,total in lines:
+  dr.text((45,y),d,font=font,fill=(35,35,35)); dr.text((230,y),marks[:50],font=small,fill=(35,35,35)); dr.text((1000,y),total,font=font,fill=(35,35,35)); y+=58
+ dr.text((45,height-42),'Ponto Online Pro • Comprovante gerado pelo administrador',font=small,fill=(90,90,90))
+ out=io.BytesIO(); img.save(out,format='PNG'); out.seek(0)
+ return send_file(out,mimetype='image/png',as_attachment=True,download_name=f'comprovante_pontos_{u.id}_{start}_{end}.png')
 
 @bp.route('/admin/punch/<int:id>/proof')
 @login_required('admin')
