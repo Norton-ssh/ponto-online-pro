@@ -1,42 +1,46 @@
 <!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Relatórios — Ponto Online Pro</title><style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f5f4f7;color:#172033}.top{background:#101827;color:#fff;padding:18px 24px;font-size:24px;font-weight:700}.nav{background:#fff;padding:12px 24px;display:flex;gap:18px;flex-wrap:wrap;box-shadow:0 2px 8px #0001}.nav a{color:#32118e;text-decoration:none;font-weight:700}.wrap{max-width:1250px;margin:22px auto;padding:0 16px}.filters,.card,.report-box{background:#fff;border-radius:14px;padding:18px;margin-bottom:18px;box-shadow:0 2px 10px #0001}.filters form{display:grid;grid-template-columns:1fr 1fr 1.5fr auto auto;gap:10px}.filters input,.filters select,.filters button,.btn{padding:12px;border:1px solid #ddd;border-radius:8px;font-size:15px}.filters button,.btn.primary{background:#4b16d8;color:#fff;border:0;font-weight:700}.btn.dark{background:#101827;color:#fff}.btn{display:inline-block;text-decoration:none;font-weight:700}.report-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}.report-card{background:#fff;border-radius:14px;padding:18px;min-height:145px;box-shadow:0 2px 10px #0001;border:1px solid #eee}.report-card h3{margin:8px 0 7px;font-size:18px}.report-card p{margin:0;color:#555;font-size:13px;line-height:1.35}.icon{width:34px;height:34px;border-radius:9px;background:#eee7ff;color:#4b16d8;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:18px}.report-card a{display:block;color:#3513a2;text-decoration:none}.titleline{display:flex;justify-content:space-between;align-items:center;gap:12px}.titleline h2{margin:0}.muted{color:#666}.actions{display:flex;gap:8px;flex-wrap:wrap}.summary{display:flex;gap:10px;flex-wrap:wrap;margin:14px 0}.pill{background:#f0ecff;color:#3f159e;padding:9px 13px;border-radius:10px;font-weight:700}.espelho{border:1px solid #bbb;margin-top:16px}.espelho .company{text-align:center;border-bottom:1px solid #222;padding:9px}.espelho .company h1{font-size:20px;margin:0 0 3px}.espelho .period{font-size:13px}.empdata{border-bottom:1px solid #222;padding:9px;text-align:center}.empdata strong{font-size:16px}.table-head,.dayrow{display:grid;grid-template-columns:135px 1fr 90px 180px;gap:0}.table-head{font-weight:700;border-bottom:1px solid #222;background:#eee}.table-head div,.dayrow div{padding:7px 9px;border-right:1px solid #ddd}.dayrow{min-height:38px;border-bottom:1px solid #ddd}.dayrow:nth-child(even){background:#eee}.mark{display:flex;flex-wrap:wrap;gap:7px}.mark span{font-family:monospace;font-weight:700}.daytotal{text-align:center;font-family:monospace;font-weight:700}.description{font-size:12px}.synthetic table{width:100%;border-collapse:collapse}.synthetic th,.synthetic td{padding:9px;border:1px solid #ddd;text-align:left}.synthetic th{background:#eee}.empty{padding:28px;color:#777;text-align:center}.hide{display:none}@media(max-width:900px){.report-grid{grid-template-columns:repeat(2,1fr)}.filters form{grid-template-columns:1fr 1fr}.table-head,.dayrow{grid-template-columns:105px 1fr 70px 120px}}@media(max-width:600px){.report-grid{grid-template-columns:1fr}.filters form{grid-template-columns:1fr}.table-head,.dayrow{grid-template-columns:90px 1fr}.table-head div:nth-child(3),.table-head div:nth-child(4),.dayrow div:nth-child(3),.dayrow div:nth-child(4){display:none}}@media print{
-.nav,.filters,.report-grid,.no-print{display:none!important}
-body{background:#fff;color:#000}
-.top{display:none!important}
-.wrap{max-width:none;padding:0;margin:0}
-.report-box{box-shadow:none;border:0;margin:0;padding:0}
-.screen-report{display:none!important}
+@page{size:A4 portrait;margin:5mm 5mm 4mm 5mm}
+html,body{width:100%;margin:0!important;padding:0!important;background:#fff!important;color:#000!important}
+.nav,.filters,.report-grid,.no-print,.top,.screen-report{display:none!important}
+.wrap{max-width:none!important;padding:0!important;margin:0!important}
+.report-box{display:none!important}
 .print-espelho{display:block!important}
 }
 @media screen{.print-espelho{display:none}}
-.print-espelho{font-family:Arial,sans-serif;color:#000;font-size:11px}
-.print-sheet{width:100%;page-break-after:always}
+.print-espelho{font-family:Arial,sans-serif;color:#000;font-size:8px}
+.print-sheet{width:100%;page-break-after:always;page-break-inside:avoid}
 .print-sheet:last-child{page-break-after:auto}
-.print-title{text-align:center;border-bottom:1px solid #000;padding:2px 0 5px}
-.print-title h1{font-size:18px;line-height:19px;margin:0;font-weight:700}
-.print-title .periodo{font-size:12px;font-weight:700;margin-top:2px}
-.print-meta{border-bottom:1px solid #000;padding:5px 4px 4px}
-.print-meta-title{text-align:center;font-weight:700;font-size:13px;border-bottom:1px solid #000;padding-bottom:3px;margin-bottom:4px}
-.print-company{display:grid;grid-template-columns:1fr 1fr 1fr;gap:2px 10px;line-height:15px}
+.print-title{text-align:center;border-bottom:1.5px solid #000;padding:0 0 2px}
+.print-title h1{font-size:15px;line-height:16px;margin:0;font-weight:700}
+.print-title .periodo{font-size:8.5px;font-weight:700;margin-top:1px}
+.print-meta{border-bottom:1px solid #000;padding:2px 2px 2px}
+.print-meta-title{text-align:center;font-weight:700;font-size:8.5px;border-bottom:1px solid #000;padding-bottom:1px;margin-bottom:2px}
+.print-company{display:grid;grid-template-columns:1.8fr 1fr 1fr;gap:1px 5px;line-height:10px;font-size:7.5px}
 .print-company .wide{grid-column:1/-1}
-.print-employee{border-bottom:1px solid #000;padding:4px;text-align:center}
-.print-employee-title{font-weight:700;font-size:13px;border-bottom:1px solid #000;padding-bottom:3px;margin-bottom:3px}
-.print-employee-line{display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;font-size:12px;font-weight:700}
+.print-employee{border-bottom:1px solid #000;padding:2px;text-align:center}
+.print-employee-title{font-weight:700;font-size:8.5px;border-bottom:1px solid #000;padding-bottom:1px;margin-bottom:1px}
+.print-employee-line{display:grid;grid-template-columns:1.5fr 1fr 1fr;gap:4px;font-size:8px;font-weight:700}
 .print-employee-line span{font-weight:400}
-.print-mark-title{text-align:center;font-weight:700;font-size:13px;padding:4px 0 2px}
+.print-employee-extra{font-size:7.5px;margin-top:1px}
+.print-mark-title{text-align:center;font-weight:700;font-size:8.5px;padding:2px 0 1px}
 .print-table{width:100%;border-collapse:collapse;table-layout:fixed}
-.print-table th,.print-table td{border-bottom:1px solid #aaa;padding:3px 4px;height:19px;vertical-align:middle}
-.print-table th{border-top:1px solid #000;border-bottom:1px solid #000;font-size:10px;text-align:center}
-.print-table td{font-size:10px}
-.print-table .date{width:12%;font-weight:700}
-.print-table .mark{width:7.2%;text-align:center;font-family:monospace}
-.print-table .desc{width:16%;font-size:9px}
-.print-table tbody tr:nth-child(odd){background:#eee}
-.print-table .emptyday{color:#666}
-.print-footer{margin-top:5px;border-top:1px solid #000;padding-top:5px;font-size:10px;display:flex;justify-content:space-between}
-.print-sign{margin-top:35px;display:grid;grid-template-columns:1fr 1fr;gap:80px;text-align:center;font-size:10px}
-.print-sign div{border-top:1px solid #000;padding-top:3px}
-
+.print-table th,.print-table td{border:1px solid #555;padding:1px 2px;height:15px;line-height:12px;vertical-align:middle}
+.print-table th{font-size:7px;text-align:center;font-weight:700;height:14px}
+.print-table td{font-size:7.2px}
+.print-table .date{width:20%;font-weight:700;text-align:left}
+.print-table .mark{width:9%;text-align:center;font-family:Arial,sans-serif}
+.print-table .total{width:10%;text-align:center;font-weight:700}
+.print-table .normal{width:10%;text-align:center}
+.print-table tbody tr:nth-child(even){background:#f1f1f1}
+.print-table tbody tr.weekend{background:#dedede;font-weight:700}
+.print-table .emptyday{color:#666;text-align:center}
+.print-observations{border:1px solid #000;margin-top:3px;padding:3px 4px;font-size:7.5px;line-height:10px}
+.print-observations-title{font-weight:700;text-align:left;margin-bottom:1px}
+.print-observation-grid{display:grid;grid-template-columns:1.5fr 1fr 1fr 1fr 1fr;gap:3px}
+.print-observation-grid span{white-space:nowrap}
+.print-sign{margin-top:9px;display:grid;grid-template-columns:1fr 1fr;gap:50px;text-align:center;font-size:7px}
+.print-sign div{border-top:1px solid #000;padding-top:2px}
 </style></head><body>
 <div class="top">Ponto Online Pro — Relatórios</div><div class="nav"><a href="{{ url_for('main.admin_dashboard') }}">Início</a><a href="{{ url_for('main.employees') }}">Funcionários</a><a href="{{ url_for('main.admin_punches') }}">Pontos</a><a href="{{ url_for('main.report') }}">Relatórios</a><a href="{{ url_for('main.corrections') }}">Correções</a><a href="{{ url_for('main.company_edit') }}">Empresa</a><a href="{{ url_for('main.logout') }}">Sair</a></div>
 <main class="wrap">
@@ -98,30 +102,42 @@ body{background:#fff;color:#000}
   </div>
   <div class="print-mark-title">MARCAÇÕES</div>
   <table class="print-table">
-    <thead><tr>
-      <th class="date">DATA</th>
-      <th class="mark">ENT</th><th class="mark">SAI</th>
-      <th class="mark">ENT</th><th class="mark">SAI</th>
-      <th class="mark">ENT</th><th class="mark">SAI</th>
-      <th class="mark">ENT</th><th class="mark">SAI</th>
-      <th class="desc">DESCRIÇÃO DO ABONO</th>
-    </tr></thead>
+    <thead>
+      <tr>
+        <th class="date" rowspan="2">DATA</th>
+        <th colspan="2">MANHÃ</th>
+        <th colspan="2">TARDE</th>
+        <th class="total" rowspan="2">TOTAL<br>HORAS</th>
+        <th class="normal" rowspan="2">HORAS<br>NORMAIS</th>
+      </tr>
+      <tr>
+        <th class="mark">ENTRADA</th><th class="mark">SAÍDA</th>
+        <th class="mark">ENTRADA</th><th class="mark">SAÍDA</th>
+      </tr>
+    </thead>
     <tbody>
     {% for day in row.calendar_days %}
       {% set ps = row.days.get(day, []) %}
-      <tr>
-        <td class="date">{{ day.strftime('%d/%m/%Y') }} {{ {'MON':'SEG','TUE':'TER','WED':'QUA','THU':'QUI','FRI':'SEX','SAT':'SAB','SUN':'DOM'}.get(day.strftime('%a').upper(),day.strftime('%a').upper()) }}</td>
-        {% for i in range(8) %}<td class="mark">{% if i < ps|length %}{{ ps[i].timestamp.strftime('%H:%M') }}{% endif %}</td>{% endfor %}
-        <td class="desc">{% for p in ps if p.edited %}{{ p.correction_note or 'Registro corrigido' }}{% if not loop.last %}; {% endif %}{% endfor %}</td>
+      {% set wd = day.weekday() %}
+      <tr class="{% if wd>=5 %}weekend{% endif %}">
+        <td class="date">{{ day.strftime('%d/%m/%Y') }} — {{ {'MON':'SEG','TUE':'TER','WED':'QUA','THU':'QUI','FRI':'SEX','SAT':'SÁB','SUN':'DOM'}.get(day.strftime('%a').upper(),day.strftime('%a').upper()) }}</td>
+        {% for i in range(4) %}<td class="mark">{% if i < ps|length %}{{ ps[i].timestamp.strftime('%H:%M') }}{% endif %}</td>{% endfor %}
+        <td class="total">{{ fmt_minutes(work_minutes(ps)) }}</td>
+        <td class="normal">{% if wd < 5 and day in row.workdays %}{{ fmt_minutes(row.daily_target) }}{% else %}00:00{% endif %}</td>
       </tr>
     {% endfor %}
-    {% if not row.workdays %}<tr><td colspan="10" class="emptyday">Nenhum dia útil no período.</td></tr>{% endif %}
     </tbody>
   </table>
-  <div class="print-footer">
-    <div><b>TOTAL DE MARCAÇÕES:</b> {{ row.count }}</div>
-    <div><b>HORAS TRABALHADAS:</b> {{ fmt_minutes(row.total) }}</div>
-    <div><b>JORNADA/DIA:</b> {{ fmt_minutes(row.daily_target) }}</div>
+  <div class="print-observations">
+    <div class="print-observations-title">OBSERVAÇÕES</div>
+    <div class="print-observation-grid">
+      <span><b>FALTAS:</b> {{ row.absence_count }}</span>
+      <span><b>ATESTADOS:</b> 0</span>
+      <span><b>DIAS ÚTEIS:</b> {{ row.workdays|length }}</span>
+      <span><b>DIAS TRABALHADOS:</b> {{ row.days|length }}</span>
+      <span><b>HORAS:</b> {{ fmt_minutes(row.total) }}</span>
+    </div>
+    <div style="margin-top:2px"><b>OBSERVAÇÃO:</b> {% if row.absence_count %}{{ row.absence_count }} falta(s) sem marcação registrada no período.{% else %}Sem faltas registradas por ausência de marcação.{% endif %} {% if row.count %}Marcações conferidas conforme registros do sistema.{% endif %}</div>
   </div>
   <div class="print-sign"><div>Responsável pela empresa</div><div>Empregado</div></div>
 </div>
